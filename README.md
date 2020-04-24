@@ -1,12 +1,15 @@
 
-[![Build Status](https://travis-ci.com/anenriquez/mrta_allocation.svg?token=QudZDF4JraaUN8o4yWNo&branch=master)](https://travis-ci.com/anenriquez/mrta_allocation)
+[![Build Status](https://travis-ci.com/anenriquez/mrta.svg?branch=master)](https://travis-ci.com/anenriquez/mrta)
 
 # Multi-Robot Task Allocation (MRTA)
 
 Allocates tasks with temporal constraints and uncertain durations to a multi-robot system.
- 
-Uses an auction-based approach based on [1]. 
 
+Includes three allocation algorithms:
+- Temporal-sequential single item auctions (TeSSI)[1]. 
+- Temporal-sequential single item auctions with degree of strong controllability (TeSSI-DSC) (based on [1] and [3]).
+- Temporal-sequential single item auctions with static robust execution (TeSSI-SREA) (based on [1] and [2])
+ 
 Each robot maintains a temporal network with its tasks.
 The temporal network is either a:
 - Simple Temporal Network (STN)
@@ -19,25 +22,84 @@ The [mrta_stn](https://github.com/anenriquez/mrta_stn/) repository includes the 
 network models and solvers for the STP.
 
 
-The bidding rule is a combination of two metrics of the temporal network.
-- Robustness
-- Temporal
+The system consists of a fms (fleet managements system), a robot proxy and a robot instance per physical robot in the fleet.
 
-Configure the robustness and temporal parameters in `config/config.yaml`
+Brief description of the components: 
 
-The robustness metric is a result of the STP solver and can take the values:
+![component_diagram](https://github.com/ropod-project/mrta/blob/develop/documentation/component_diagram.png)
 
-- fpc
-- srea      [2]
-- dsc_lp    [3]
+### FMS: 
+- Gets tasks' plan from pickup to delivery and adds it to the task.
+- Requests the auctioneer to allocate tasks
+ 
+#### Auctioneer
+- Announces unallocated tasks to the robot proxies in the local network, opening an allocation round.
+- Receives bids from the robot bidders.
+- Elects a winner per allocation round or throws an exception indicating that no allocation was possible in the current round.
 
-The temporal metric measures a value of the dispatching graph (result of solving the STP).
-It can take the values:
+#### Dispatcher
+- Gets earliest task and checks schedulability condition (a task is schedulable x time before its start time).
+- Adds action between current robot's position and the task's pickup location.
+- Dispatches a task queue to the schedule execution monitor. 
 
-- completion_time
-- makespan
+#### Timetable Monitor
+- Receives task-status messages 
+- Updates the corresponding robot's timetable accordingly and triggers recovery measures if necessary. 
+
+#### Fleet Monitor
+- Update robot's positions based on robot-pose messages.
+
+#### PerformanceTracker
+- Updates performance metrics during allocation, scheduling and execution
+
+#### Simulator
+- Controls simulation time using [simpy](https://simpy.readthedocs.io/en/latest/)
+
+### RobotProxy
+Acts on behalf of the robot
+
+#### Bidder
+- Receives task announcements.
+- Computes a bid per task received in the task announcement. Bid calculation is dependant of the allocation method.
+- Sends its best bid to the auctioneer.
+
+#### Timetable Monitor
+- Same as the timetable monitor, but only updates the robot's proxy timetable.
+
+### Robot
+Physical robot (in this case, just a mockup)
+
+#### Schedule Monitor
+- Receives a task queue and schedules the first task in the queue.
+- Sends the task to the executor. 
+- Receives task-status messages from the executor and monitors the execution of the task.
+- Triggers recovery measures in case the current task violates the temporal constraints and the next task is at risk. 
+
+#### Executor
+- Determines the duration of actions based on a duration graph (travel time based on historical information) and sends task-status msgs.
+
+#### API:
+- Provides middleware functionality
+
+#### ccu_store
+- interface to interact with the ccu db
+
+#### robot_store
+- interface to interact with the robot db
+
+#### robot_proxy_store
+- interface to interact with the robot proxy db
 
 
+# Installation
+
+Create directory for logger
+```
+sudo mkdir -p /var/log/mrta
+sudo chown -R $USER:$USER /var/log/mrta
+```
+
+Available approaches are specified in mrs/config/default/approaches.yaml
 
 ## Using Docker
 
@@ -45,14 +107,17 @@ It can take the values:
 
 [Install docker-compose](https://docs.docker.com/compose/install/)
 
-docker-compose build task_allocation_test
+Go to `mrs/tests` and run
+```
+python3 run.py approach_name
 
-docker-compose up -d robot
+```
 
-docker-compose up -d task_allocator
+Example:
 
-docker-compose up task_allocation_test
-
+```
+python3 run.py tessi-dsc-corrective-preempt
+```
 
 ## Without Docker
 
@@ -74,21 +139,27 @@ Add the task_allocation to your `PYTHONPATH` by running:
 pip3 install --user -e .
 ```
 
-Go to `/mrs` and run in a terminal
+Open a terminal per robot proxy and run
 
 ```
-python3 robot.py ropod_001
+python3 robot_proxy.py ropod_001 --approach approach_name
+```
+
+Open a terminal per robot and run
+
+```
+python3 robot.py ropod_001 --approach approach_name
 ```
 
 Run in another terminal
 
 ```
-python3 ccu.py
+python3 ccu.py  --approach approach_name
 ```
 
 Go to `/tests` and run test in another terminal
 ```
-python3 allocation_test.py 
+python3 test.py --approach approach_name
 ```
 
 ## References
