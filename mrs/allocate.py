@@ -180,13 +180,13 @@ class Allocate(RopodPyre):
         """
         unallocated_tasks = Task.get_tasks_by_status(TaskStatusConst.UNALLOCATED)
         allocated_tasks = Task.get_tasks_by_status(TaskStatusConst.ALLOCATED)
-        preempted_tasks = Task.get_tasks_by_status(TaskStatusConst.PREEMPTED)
         planned_tasks = Task.get_tasks_by_status(TaskStatusConst.PLANNED)
         dispatched_tasks = Task.get_tasks_by_status(TaskStatusConst.DISPATCHED)
         ongoing_tasks = Task.get_tasks_by_status(TaskStatusConst.ONGOING)
 
         with switch_collection(TaskStatus, TaskStatus.Meta.archive_collection):
             completed_tasks = Task.get_tasks_by_status(TaskStatusConst.COMPLETED)
+            preempted_tasks = Task.get_tasks_by_status(TaskStatusConst.PREEMPTED)
             canceled_tasks = Task.get_tasks_by_status(TaskStatusConst.CANCELED)
             aborted_tasks = Task.get_tasks_by_status(TaskStatusConst.ABORTED)
 

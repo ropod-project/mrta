@@ -3,6 +3,7 @@ import time
 
 from fmlib.models.robot import Robot
 from fmlib.models.tasks import TransportationTask as Task
+from pymodm.errors import DoesNotExist
 from ropod.structs.status import TaskStatus as TaskStatusConst, ActionStatus as ActionStatusConst
 from ropod.utils.timestamp import TimeStamp
 from stn.exceptions.stp import NoSTPSolution
@@ -43,9 +44,12 @@ class TimetableMonitorBase:
         self.process_task_status(task_status, timestamp)
 
     def process_task_status(self, task_status, timestamp):
-        task = Task.get_task(task_status.task_id)
-        if task_status.task_status == TaskStatusConst.ONGOING:
-            self.process_ongoing_task(task, task_status, timestamp)
+        try:
+            task = Task.get_task(task_status.task_id)
+            if task_status.task_status == TaskStatusConst.ONGOING:
+                self.process_ongoing_task(task, task_status, timestamp)
+        except DoesNotExist:
+            self.logger.warning("Task %s does not exist", task_status.task_id)
 
     def process_ongoing_task(self, task, task_status, timestamp):
         self.update_timetable(task, task_status.robot_id, task_status.task_progress, timestamp)
@@ -244,18 +248,21 @@ class TimetableMonitor(TimetableMonitorBase):
         self.processing_task = False
 
     def process_task_status(self, task_status, timestamp):
-        super().process_task_status(task_status, timestamp)
-        task = Task.get_task(task_status.task_id)
+        try:
+            task = Task.get_task(task_status.task_id)
+            if task_status.task_status == TaskStatusConst.ONGOING:
+                self.process_ongoing_task(task, task_status, timestamp)
+            if task_status.task_status == TaskStatusConst.COMPLETED:
+                self.logger.debug("Adding task %s to tasks to remove", task.task_id)
+                self.tasks_to_remove.append((task, task_status.task_status))
 
-        if task_status.task_status == TaskStatusConst.COMPLETED:
-            self.logger.debug("Adding task %s to tasks to remove", task.task_id)
-            self.tasks_to_remove.append((task, task_status.task_status))
+            elif task_status.task_status == TaskStatusConst.UNALLOCATED:
+                self.re_allocate(task)
 
-        elif task_status.task_status == TaskStatusConst.UNALLOCATED:
-            self.re_allocate(task)
-
-        elif task_status.task_status == TaskStatusConst.PREEMPTED:
-            self.preempt(task)
+            elif task_status.task_status == TaskStatusConst.PREEMPTED:
+                self.preempt(task)
+        except DoesNotExist:
+            self.logger.warning("Task %s does not exist", task_status.task_id)
 
     def process_ongoing_task(self, task, task_status, timestamp):
         super().process_ongoing_task(task, task_status, timestamp)
@@ -322,14 +329,8 @@ class TimetableMonitor(TimetableMonitorBase):
         self.tasks_to_reallocate.append(task)
 
     def preempt(self, task):
-        if task.status.status == TaskStatusConst.PREEMPTED:
-            self.logger.warning("Task %s is already preempted", task.task_id)
-            return
-        try:
-            self.logger.info("Preempting task %s", task.task_id)
-            self.remove_task(task, TaskStatusConst.PREEMPTED)
-        except TaskNotFound:
-            return
+        self.logger.info("Preempting task %s", task.task_id)
+        self.remove_task(task, TaskStatusConst.PREEMPTED)
 
     def send_remove_task(self, task_id, status, robot_id):
         remove_task = RemoveTaskFromSchedule(task_id, status)
