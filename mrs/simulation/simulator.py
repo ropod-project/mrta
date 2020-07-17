@@ -49,7 +49,7 @@ class Simulator:
 
 
 class SimulatorInterface:
-    def __init__(self, simulator):
+    def __init__(self, simulator, **kwargs):
         self.simulator = simulator
         self._started = False
 

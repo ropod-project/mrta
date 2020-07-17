@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 
 import numpy as np
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from fmlib.utils.messages import MessageFactory
 from mrs.messages.task_status import TaskProgress
 from mrs.messages.task_status import TaskStatus as TaskStatusMsg

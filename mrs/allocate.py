@@ -4,7 +4,7 @@ import time
 from fmlib.db.mongo import MongoStore
 from fmlib.db.mongo import MongoStoreInterface
 from fmlib.models.tasks import TaskStatus
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from pymodm.context_managers import switch_collection
 from ropod.pyre_communicator.base_class import RopodPyre
 from ropod.structs.task import TaskStatus as TaskStatusConst

@@ -2,7 +2,7 @@ import logging
 import time
 
 from fmlib.models.robot import Robot
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from pymodm.errors import DoesNotExist
 from ropod.structs.status import TaskStatus as TaskStatusConst, ActionStatus as ActionStatusConst
 from ropod.utils.timestamp import TimeStamp
@@ -124,25 +124,6 @@ class TimetableMonitorBase:
         self.logger.debug("Updated action progress: status %s, start time %s, finish time %s", action_progress.status,
                           action_progress.start_time, action_progress.finish_time)
 
-    def _update_task_schedule(self, task, task_progress, timestamp):
-        # TODO: Get schedule from dispatchable graph
-        first_action_id = task.plan[0].actions[0].action_id
-        last_action_id = task.plan[0].actions[-1].action_id
-
-        if task_progress.action_id == first_action_id and \
-                task_progress.action_status.status == ActionStatusConst.ONGOING:
-            self.logger.debug("Task %s start time %s", task.task_id, timestamp)
-            task_schedule = {"start_time": timestamp,
-                             "finish_time": task.finish_time}
-            task.update_schedule(task_schedule)
-
-        elif task_progress.action_id == last_action_id and \
-                task_progress.action_status.status == ActionStatusConst.COMPLETED:
-            self.logger.debug("Task %s finish time %s", task.task_id, timestamp)
-            task_schedule = {"start_time": task.start_time,
-                             "finish_time": timestamp}
-            task.update_schedule(task_schedule)
-
     def _re_compute_dispatchable_graph(self, timetable, next_task=None):
         """ Recomputes the timetable's dispatchable graph.
 
@@ -174,7 +155,8 @@ class TimetableMonitorBase:
             raise EmptyTimetable
 
         prev_task = timetable.get_previous_task(task)
-        earliest_task = timetable.get_task(position=1)
+        earliest_task_id = timetable.get_task_id(position=1)
+        earliest_task = Task.get_task(earliest_task_id)
 
         if task.task_id == earliest_task.task_id and next_task:
             self._remove_first_task(task, next_task, status, timetable)
@@ -267,7 +249,7 @@ class TimetableMonitor(TimetableMonitorBase):
     def process_ongoing_task(self, task, task_status, timestamp):
         super().process_ongoing_task(task, task_status, timestamp)
         self._update_progress(task, task_status.task_progress, timestamp)
-        self._update_task_schedule(task, task_status.task_progress, timestamp)
+        task.update_schedule()
 
     def _update_timepoint(self, task, timetable, r_assigned_time, node_id, task_progress):
         timetable.check_is_task_delayed(task, r_assigned_time, node_id)

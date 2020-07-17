@@ -3,7 +3,7 @@ import logging
 
 from fmlib.models.robot import Robot
 from fmlib.models.tasks import InterTimepointConstraint
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from pymodm.errors import DoesNotExist
 from ropod.structs.task import TaskStatus as TaskStatusConst
 from stn.exceptions.stp import NoSTPSolution
@@ -149,7 +149,8 @@ class Bidder:
 
             try:
                 # Update previous location and start constraints of next task (if any)
-                next_task = self.timetable.get_task(insertion_point+1)
+                next_task_id = self.timetable.get_task_id(insertion_point+1)
+                next_task = Task.get_task(next_task_id)
                 prev_version_next_stn_task = self.timetable.get_stn_task(next_task.task_id)
 
                 prev_location = self.get_task_delivery_location(task)
@@ -199,7 +200,8 @@ class Bidder:
 
     def insert_in(self, insertion_point):
         try:
-            task = self.timetable.get_task(insertion_point)
+            task_id = self.timetable.get_task_id(insertion_point)
+            task = Task.get_task(task_id)
             if task.status.status in [TaskStatusConst.DISPATCHED, TaskStatusConst.ONGOING]:
                 self.logger.debug("Task %s was already dispatched "
                                   "Not computing bid for this insertion point %s", task.task_id, insertion_point)
@@ -219,7 +221,8 @@ class Bidder:
                 self.logger.warning("No information about robot's location")
                 previous_location = "AMK_D_L-1_C39"
         else:
-            previous_task = self.timetable.get_task(insertion_point - 1)
+            previous_task_id = self.timetable.get_task_id(insertion_point - 1)
+            previous_task = Task.get_task(previous_task_id)
             previous_location = previous_task.request.delivery_location
 
         self.logger.debug("Previous location: %s ", previous_location)

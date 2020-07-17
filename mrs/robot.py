@@ -7,11 +7,12 @@ from mrs.execution.delay_recovery import DelayRecovery
 from mrs.execution.executor import Executor
 from mrs.execution.schedule_execution_monitor import ScheduleExecutionMonitor
 from mrs.execution.scheduler import Scheduler
-from mrs.simulation.simulator import Simulator
+from mrs.simulation.simulator import Simulator, SimulatorInterface
 from mrs.timetable.timetable import Timetable
 
 _component_modules = {
     'simulator': Simulator,
+    'simulator_interface': SimulatorInterface,
     'timetable': Timetable,
     'executor': Executor,
     'scheduler': Scheduler,

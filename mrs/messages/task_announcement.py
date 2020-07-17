@@ -1,5 +1,6 @@
 from fmlib.models.requests import TransportationRequest
-from fmlib.models.tasks import TransportationTask as Task, TransportationTaskConstraints as TaskConstraints
+from mrs.db.models.task import TransportationTask as Task
+from fmlib.models.tasks import TransportationTaskConstraints as TaskConstraints
 from ropod.utils.timestamp import TimeStamp
 from ropod.utils.uuid import generate_uuid
 

@@ -21,3 +21,10 @@ def to_timestamp(ztp, r_time):
         time_ = ztp + timedelta(seconds=r_time)
     return time_
 
+
+def init_ztp():
+    midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    ztp = TimeStamp()
+    ztp.timestamp = midnight
+    return ztp
+

@@ -2,10 +2,11 @@ import collections
 from datetime import datetime, timedelta
 
 from fmlib.models.requests import TransportationRequest
-from fmlib.models.tasks import TransportationTask, TransportationTaskConstraints
-from fmlib.models.tasks import TimepointConstraint, InterTimepointConstraint, TransportationTemporalConstraints
+from fmlib.models.tasks import TimepointConstraint, InterTimepointConstraint, TransportationTemporalConstraints, \
+    TransportationTaskConstraints
 from ropod.utils.uuid import generate_uuid
 
+from mrs.db.models.task import TransportationTask
 from mrs.utils.utils import load_yaml_file_from_module
 
 

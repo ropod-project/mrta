@@ -2,23 +2,22 @@ import copy
 import logging
 from datetime import timedelta
 
-from fmlib.models.tasks import TransportationTask as Task, TimepointConstraint
+from fmlib.models.tasks import TimepointConstraint
+from pymodm.errors import DoesNotExist
+from ropod.utils.timestamp import TimeStamp
+from stn.exceptions.stp import NoSTPSolution, NodeNotFound
+from stn.methods.fpc import get_minimal_network
 from stn.stp import STP
+from stn.task import Task as STNTask
 
 from mrs.db.models.timetable import Timetable as TimetableMongo
 from mrs.exceptions.allocation import InvalidAllocation
 from mrs.exceptions.allocation import TaskNotFound
 from mrs.exceptions.execution import InconsistentAssignment
 from mrs.messages.d_graph_update import DGraphUpdate
-from mrs.simulation.simulator import SimulatorInterface
 from mrs.timetable.stn_interface import STNInterface
-from pymodm.errors import DoesNotExist
-from ropod.utils.timestamp import TimeStamp
-from stn.exceptions.stp import NoSTPSolution
-from stn.methods.fpc import get_minimal_network
-from stn.task import Task as STNTask
-
 from mrs.utils.time import to_timestamp
+from mrs.utils.time import init_ztp
 
 
 class Timetable(STNInterface):
@@ -38,16 +37,12 @@ class Timetable(STNInterface):
 
         self.robot_id = robot_id
         self.stp_solver = stp_solver
-
-        simulator_interface = SimulatorInterface(kwargs.get("simulator"))
-
-        self.ztp = simulator_interface.init_ztp()
+        self.ztp = kwargs.get('ztp', init_ztp())
         self.stn = self.stp_solver.get_stn()
         self.dispatchable_graph = self.stp_solver.get_stn()
         super().__init__(self.ztp, self.stn, self.dispatchable_graph)
 
         self.logger = logging.getLogger("mrs.timetable.%s" % self.robot_id)
-        self.logger.debug("Timetable %s started", self.robot_id)
 
     def update_ztp(self, time_):
         self.ztp.timestamp = time_
@@ -102,19 +97,15 @@ class Timetable(STNInterface):
         """
         return self.stn.get_tasks()
 
-    def get_task(self, position):
-        """ Returns the task in the given position
+    def get_task_id(self, position):
+        """ Returns the task_id in the given position
 
         :param position: (int) position in the STN
-        :return: (Task) task
+        :return: (str) task id
         """
         task_id = self.stn.get_task_id(position)
         if task_id:
-            try:
-                return Task.get_task(task_id)
-            except DoesNotExist:
-                self.logger.warning("Task %s is not in db", task_id)
-                raise DoesNotExist
+            return task_id
         else:
             raise TaskNotFound(position)
 
@@ -126,17 +117,17 @@ class Timetable(STNInterface):
         if self.stn.has_node(task_last_node + 1):
             next_task_id = self.stn.nodes[task_last_node + 1]['data'].task_id
             try:
-                next_task = Task.get_task(next_task_id)
+                next_task = task.get_task(next_task_id)
             except DoesNotExist:
                 self.logger.warning("Task %s is not in db", next_task_id)
-                next_task = Task.create_new(task_id=next_task_id)
+                next_task = task.create_new(task_id=next_task_id)
             return next_task
 
     def get_previous_task(self, task):
         task_first_node = self.stn.get_task_node_ids(task.task_id)[0]
         if task_first_node > 1 and self.stn.has_node(task_first_node - 1):
             prev_task_id = self.stn.nodes[task_first_node - 1]['data'].task_id
-            prev_task = Task.get_task(prev_task_id)
+            prev_task = task.get_task(prev_task_id)
             return prev_task
 
     def get_task_position(self, task_id):
@@ -148,33 +139,38 @@ class Timetable(STNInterface):
             return True
         return False
 
-    def get_earliest_task(self):
-        task_id = self.stn.get_earliest_task_id()
-        if task_id:
-            try:
-                task = Task.get_task(task_id)
-                return task
-            except DoesNotExist:
-                self.logger.warning("Task %s is not in db or its first node is not the start node", task_id)
+    def get_earliest_task_id(self):
+        return self.stn.get_earliest_task_id()
 
     def get_r_time(self, task_id, node_type, lower_bound):
-        r_time = self.dispatchable_graph.get_time(task_id, node_type, lower_bound)
-        return r_time
+        try:
+            return self.dispatchable_graph.get_time(task_id, node_type, lower_bound)
+        except NodeNotFound:
+            raise NodeNotFound
 
     def get_start_time(self, task_id, lower_bound=True):
-        r_start_time = self.get_r_time(task_id, 'start', lower_bound)
-        start_time = self.ztp + timedelta(seconds=r_start_time)
-        return start_time
+        try:
+            r_start_time = self.get_r_time(task_id, 'start', lower_bound)
+            start_time = self.ztp + timedelta(seconds=r_start_time)
+            return start_time
+        except NodeNotFound:
+            raise NodeNotFound
 
     def get_pickup_time(self, task_id, lower_bound=True):
-        r_pickup_time = self.get_r_time(task_id, 'pickup', lower_bound)
-        pickup_time = self.ztp + timedelta(seconds=r_pickup_time)
-        return pickup_time
+        try:
+            r_pickup_time = self.get_r_time(task_id, 'pickup', lower_bound)
+            pickup_time = self.ztp + timedelta(seconds=r_pickup_time)
+            return pickup_time
+        except NodeNotFound:
+            raise NodeNotFound
 
     def get_delivery_time(self, task_id, lower_bound=True):
-        r_delivery_time = self.get_r_time(task_id, 'delivery', lower_bound)
-        delivery_time = self.ztp + timedelta(seconds=r_delivery_time)
-        return delivery_time
+        try:
+            r_delivery_time = self.get_r_time(task_id, 'delivery', lower_bound)
+            delivery_time = self.ztp + timedelta(seconds=r_delivery_time)
+            return delivery_time
+        except NodeNotFound:
+            return NodeNotFound
 
     def check_is_task_delayed(self, task, assigned_time, node_id):
         latest_time = self.dispatchable_graph.get_node_latest_time(node_id)
@@ -243,11 +239,10 @@ class Timetable(STNInterface):
     def from_dict(timetable_dict):
         robot_id = timetable_dict['robot_id']
         stp_solver = STP(timetable_dict['solver_name'])
-        timetable = Timetable(robot_id, stp_solver)
-        stn_cls = timetable.stp_solver.get_stn()
+        ztp = TimeStamp.from_str(timetable_dict.get('ztp'))
+        timetable = Timetable(robot_id, stp_solver, ztp)
 
-        ztp = timetable_dict.get('ztp')
-        timetable.ztp = TimeStamp.from_str(ztp)
+        stn_cls = timetable.stp_solver.get_stn()
         timetable.stn = stn_cls.from_dict(timetable_dict['stn'])
         timetable.dispatchable_graph = stn_cls.from_dict(timetable_dict['dispatchable_graph'])
         timetable.stn_tasks = timetable_dict['stn_tasks']
@@ -272,7 +267,7 @@ class Timetable(STNInterface):
     def fetch(self):
         try:
             self.logger.debug("Fetching timetable of robot %s", self.robot_id)
-            timetable_mongo = TimetableMongo.objects.get_timetable(self.robot_id)
+            timetable_mongo = TimetableMongo.get_timetable(self.robot_id)
             self.stn = self.stn.from_dict(timetable_mongo.stn)
             self.dispatchable_graph = self.stn.from_dict(timetable_mongo.dispatchable_graph)
             self.ztp = TimeStamp.from_datetime(timetable_mongo.ztp)
@@ -284,6 +279,17 @@ class Timetable(STNInterface):
             self.stn = self.stp_solver.get_stn()
             self.dispatchable_graph = self.stp_solver.get_stn()
 
+    @classmethod
+    def get_timetable(cls, robot_id):
+        model = TimetableMongo.get_timetable(robot_id)
+        stp_solver = STP(model.solver_name)
+        ztp = TimeStamp.from_datetime(model.ztp)
+        timetable = cls(robot_id, stp_solver, ztp=ztp)
+        timetable.stn = timetable.stn.from_dict(model.stn)
+        timetable.dispatchable_graph = timetable.stn.from_dict(model.dispatchable_graph)
+        timetable.stn_tasks = {task_id: STNTask.from_dict(task) for (task_id, task) in model.stn_tasks.items()}
+        return timetable
+
 
 class TimetableManager(dict):
     """
@@ -293,29 +299,15 @@ class TimetableManager(dict):
         super().__init__()
         self.logger = logging.getLogger("mrs.timetable.manager")
         self.stp_solver = stp_solver
-        self.simulator = kwargs.get('simulator')
-
+        self.ztp = kwargs.get('ztp', init_ztp())
         self.logger.debug("TimetableManager started")
-
-    @property
-    def ztp(self):
-        if self:
-            any_timetable = next(iter(self.values()))
-            return any_timetable.ztp
-        else:
-            self.logger.error("The zero timepoint has not been initialized")
-
-    @ztp.setter
-    def ztp(self, time_):
-        for robot_id, timetable in self.items():
-            timetable.update_zero_timepoint(time_)
 
     def get_timetable(self, robot_id):
         return self.get(robot_id)
 
     def register_robot(self, robot_id):
         self.logger.debug("Registering robot %s", robot_id)
-        timetable = Timetable(robot_id, self.stp_solver, simulator=self.simulator)
+        timetable = Timetable(robot_id, self.stp_solver, ztp=self.ztp)
         timetable.fetch()
         self[robot_id] = timetable
         timetable.store()

@@ -1,6 +1,6 @@
 import uuid
 
-from fmlib.models.tasks import TransportationTask as Task
+from fmlib.models.tasks import TaskStatus
 from ropod.structs.status import TaskStatus as TaskStatusConst
 from stn.task import Edge
 from stn.task import Task as STNTask
@@ -91,12 +91,11 @@ class STNInterface:
 
     def previous_task_is_frozen(self, insertion_point):
         task_id = self.stn.get_task_id(insertion_point-1)
-        previous_task = Task.get_task(task_id)
-        if previous_task.status.status in [TaskStatusConst.DISPATCHED, TaskStatusConst.ONGOING]:
+        task_status = TaskStatus.get_task_status(task_id)
+        if task_status.status in [TaskStatusConst.DISPATCHED, TaskStatusConst.ONGOING]:
             return True
         return False
 
     def get_r_time_previous_task(self, insertion_point, node_type, earliest=True):
         task_id = self.stn.get_task_id(insertion_point-1)
-        previous_task = Task.get_task(task_id)
-        return self.dispatchable_graph.get_time(previous_task.task_id, node_type, earliest)
+        return self.dispatchable_graph.get_time(task_id, node_type, earliest)

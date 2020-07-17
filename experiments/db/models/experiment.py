@@ -4,7 +4,7 @@ from fmlib.models.tasks import TaskStatus
 from fmlib.models.actions import GoTo as Action
 from mrs.db.models.performance.robot import RobotPerformance
 from mrs.db.models.performance.task import TaskPerformance
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from pymodm import fields, MongoModel
 from pymodm.context_managers import switch_collection
 from pymodm.manager import Manager

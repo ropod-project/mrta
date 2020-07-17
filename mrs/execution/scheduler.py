@@ -1,5 +1,4 @@
 import logging
-from datetime import timedelta
 
 import numpy as np
 from mrs.exceptions.execution import InconsistentAssignment
@@ -33,12 +32,7 @@ class Scheduler(object):
         for start_time in start_times:
             try:
                 self.timetable.assign_timepoint(start_time, node_id)
-                start_time = (self.timetable.ztp + timedelta(seconds=start_time)).to_datetime()
-
-                task_schedule = {"start_time": start_time,
-                                 "finish_time": task.finish_time}
-
-                task.update_schedule(task_schedule)
+                task.update_schedule()
                 task.update_status(TaskStatusConst.SCHEDULED)
                 self.logger.debug("Task %s scheduled to start at %s", task.task_id, task.start_time)
                 return

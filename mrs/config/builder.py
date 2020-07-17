@@ -9,7 +9,7 @@ from mrs.execution.fleet_monitor import FleetMonitor
 from mrs.execution.schedule_execution_monitor import ScheduleExecutionMonitor
 from mrs.execution.scheduler import Scheduler
 from mrs.performance.tracker import PerformanceTracker
-from mrs.simulation.simulator import Simulator
+from mrs.simulation.simulator import Simulator, SimulatorInterface
 from mrs.timetable.timetable import Timetable, TimetableManager
 from mrs.timetable.monitor import TimetableMonitor
 from stn.stp import STP
@@ -18,6 +18,7 @@ from stn.stp import STP
 class MRTABuilder:
 
     _component_modules = {'simulator': Simulator,
+                          'simulator_interface': SimulatorInterface,
                           'timetable': Timetable,
                           'timetable_manager': TimetableManager,
                           'delay_recovery': DelayRecovery,
@@ -33,6 +34,7 @@ class MRTABuilder:
                           }
 
     _config_order = ['simulator',
+                     'simulator_interface',
                      'timetable',
                      'timetable_manager',
                      'delay_recovery',
@@ -89,6 +91,8 @@ class MRTABuilder:
         if component and isinstance(config, dict):
             self.register_component(component_name, component)
             _component = component(**config, **self._components, **kwargs)
+            if hasattr(_component, 'init_ztp'):
+                self.register_component('ztp', _component.init_ztp())
             return _component
 
     def __call__(self, **kwargs):

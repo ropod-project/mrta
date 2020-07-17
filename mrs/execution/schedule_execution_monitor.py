@@ -1,6 +1,6 @@
 import logging
 
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from pymodm.errors import DoesNotExist
 from ropod.structs.status import TaskStatus as TaskStatusConst
 

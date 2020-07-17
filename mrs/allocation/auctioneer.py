@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
 
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from mrs.allocation.round import Round
 from mrs.exceptions.allocation import AlternativeTimeSlot
 from mrs.exceptions.allocation import InvalidAllocation
@@ -237,28 +237,3 @@ class Auctioneer(SimulatorInterface):
         else:
             self.logger.warning("Round %s has to be repeated", self.round.id)
             self.finish_round()
-
-    def get_task_schedule(self, task_id, robot_id):
-        """ Returns a dict
-            start_time:  earliest start time according to the dispatchable graph
-            finish_time: latest start time according to the dispatchable graph
-        """
-        timetable = self.timetable_manager.get(robot_id)
-
-        r_earliest_start_time = timetable.dispatchable_graph.get_time(task_id, "start")
-        r_earliest_pickup_time = timetable.dispatchable_graph.get_time(task_id, "pickup")
-        r_latest_delivery_time = timetable.dispatchable_graph.get_time(task_id, "delivery", False)
-
-        start_time = to_timestamp(self.timetable_manager.ztp, r_earliest_start_time)
-        pickup_time = to_timestamp(self.timetable_manager.ztp, r_earliest_pickup_time)
-        delivery_time = to_timestamp(self.timetable_manager.ztp, r_latest_delivery_time)
-
-        self.logger.debug("Task %s start time: %s", task_id, start_time)
-        self.logger.debug("Task %s pickup time : %s", task_id, pickup_time)
-        self.logger.debug("Task %s latest delivery time: %s", task_id, delivery_time)
-
-        task_schedule = {"start_time": start_time.to_datetime(),
-                         "finish_time": delivery_time.to_datetime()}
-
-        return task_schedule
-

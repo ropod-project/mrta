@@ -2,17 +2,18 @@ import argparse
 import logging.config
 
 from fmlib.models.robot import Robot as RobotModel
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from ropod.structs.status import TaskStatus as TaskStatusConst
 
 from mrs.allocation.bidder import Bidder
 from mrs.config.configurator import Configurator
 from mrs.config.params import get_config_params
-from mrs.simulation.simulator import Simulator
+from mrs.simulation.simulator import Simulator, SimulatorInterface
 from mrs.timetable.monitor import TimetableMonitorProxy
 from mrs.timetable.timetable import Timetable
 
 _component_modules = {'simulator': Simulator,
+                      'simulator_interface': SimulatorInterface,
                       'timetable': Timetable,
                       'timetable_monitor': TimetableMonitorProxy,
                       'bidder': Bidder,

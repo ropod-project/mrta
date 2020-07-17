@@ -39,6 +39,10 @@ class Timetable(MongoModel):
             logging.warning('Could not save models to MongoDB')
 
     @classmethod
+    def get_timetable(cls, robot_id):
+        return Timetable.objects.get_timetable(robot_id)
+
+    @classmethod
     def from_payload(cls, payload):
         document = Document.from_payload(payload)
         document['_id'] = document.pop('robot_id')

@@ -4,7 +4,7 @@ import time
 
 from fmlib.models.actions import GoTo
 from fmlib.models.tasks import TaskPlan
-from fmlib.models.tasks import TransportationTask as Task
+from mrs.db.models.task import TransportationTask as Task
 from ropod.structs.status import TaskStatus as TaskStatusConst
 
 from mrs.allocation.auctioneer import Auctioneer
@@ -22,6 +22,7 @@ from mrs.timetable.timetable import TimetableManager
 
 _component_modules = {
     'simulator': Simulator,
+    'simulator_interface': SimulatorInterface,
     'timetable_manager': TimetableManager,
     'auctioneer': Auctioneer,
     'fleet_monitor': FleetMonitor,
@@ -148,8 +149,7 @@ class CCU:
             task_id, robot_ids = self.auctioneer.allocations.pop(0)
             task = self.auctioneer.allocated_tasks.get(task_id)
             task.assign_robots(robot_ids)
-            task_schedule = self.auctioneer.get_task_schedule(task_id, robot_ids[0])
-            task.update_schedule(task_schedule)
+            task.update_schedule()
             self.update_allocation_metrics()
 
             for robot_id in robot_ids:
