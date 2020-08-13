@@ -47,13 +47,15 @@ class TimetableMonitorBase:
         try:
             task = Task.get_task(task_status.task_id)
             if task_status.task_status == TaskStatusConst.ONGOING:
-                self.process_ongoing_task(task, task_status, timestamp)
+                self.process_task_status_update(task, task_status, timestamp)
+                task.update_status(task_status.task_status)
+            if task_status.task_status == TaskStatusConst.COMPLETED:
+                self.process_task_status_update(task, task_status, timestamp)
         except DoesNotExist:
             self.logger.warning("Task %s does not exist", task_status.task_id)
 
-    def process_ongoing_task(self, task, task_status, timestamp):
+    def process_task_status_update(self, task, task_status, timestamp):
         self.update_timetable(task, task_status.robot_id, task_status.task_progress, timestamp)
-        task.update_status(task_status.task_status)
 
     def update_timetable(self, task, robot_id, task_progress, timestamp):
         if isinstance(task_progress, dict):
@@ -251,8 +253,10 @@ class TimetableMonitor(TimetableMonitorBase):
         try:
             task = Task.get_task(task_status.task_id)
             if task_status.task_status == TaskStatusConst.ONGOING:
-                self.process_ongoing_task(task, task_status, timestamp)
+                self.process_task_status_update(task, task_status, timestamp)
+                task.update_status(task_status.task_status)
             if task_status.task_status == TaskStatusConst.COMPLETED:
+                self.process_task_status_update(task, task_status, timestamp)
                 self.logger.debug("Adding task %s to tasks to remove", task.task_id)
                 self.tasks_to_remove.append((task, task_status.task_status))
 
@@ -264,8 +268,8 @@ class TimetableMonitor(TimetableMonitorBase):
         except DoesNotExist:
             self.logger.warning("Task %s does not exist", task_status.task_id)
 
-    def process_ongoing_task(self, task, task_status, timestamp):
-        super().process_ongoing_task(task, task_status, timestamp)
+    def process_task_status_update(self, task, task_status, timestamp):
+        super().process_task_status_update(task, task_status, timestamp)
         self._update_progress(task, task_status.task_progress, timestamp)
         self._update_task_schedule(task, task_status.task_progress, timestamp)
 

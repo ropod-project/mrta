@@ -67,14 +67,12 @@ class Executor(RopodPyre):
                 elif i > 0:
                     finish_time_last_action = self.execute(action, finish_time_last_action)
 
-            self.logger.debug("Completing execution of task %s", self.task.task_id)
-            self.send_task_status(TaskStatusConst.COMPLETED)
             self.task = None
             self.task_progress = None
 
     def send_task_status(self, task_status):
         task_status = TaskStatusMsg(self.task.task_id, self.robot_id, task_status, self.task_progress)
-        self.logger.debug("Sending task status for task %s", self.task.task_id)
+        self.logger.debug("Sending task status %s for task %s", task_status, self.task.task_id)
         msg = self._mf.create_message(task_status)
         msg["header"]["timestamp"] = self.task_progress.timestamp.isoformat()
         self.whisper(msg, peer=self.robot_id)
@@ -89,9 +87,17 @@ class Executor(RopodPyre):
         duration = self.get_action_duration(action)
         finish_time = start_time + timedelta(seconds=duration)
         self.update_task_progress(ActionStatusConst.COMPLETED, finish_time)
-        self.send_task_status(TaskStatusConst.ONGOING)
-
         self.logger.debug("action finish time: %s", finish_time)
+
+        last_action = self.task.plan[0].actions[-1]
+        if last_action.action_id == action.action_id:
+            self.logger.debug("Completing execution of task %s", self.task.task_id)
+            task_status = TaskStatusConst.COMPLETED
+        else:
+            task_status = TaskStatusConst.ONGOING
+
+        self.send_task_status(task_status)
+
         return finish_time
 
     def get_action_duration(self, action):
