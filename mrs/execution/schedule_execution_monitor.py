@@ -45,15 +45,20 @@ class ScheduleExecutionMonitor(TimetableMonitorBase):
 
     def d_graph_update_cb(self, msg):
         payload = msg['payload']
-        self.logger.debug("Received DGraph update")
-        d_graph_update = DGraphUpdate.from_payload(payload)
-        d_graph_update.update_timetable(self.timetable)
-        self.logger.debug("STN update %s", self.timetable.stn)
-        self.logger.debug("Dispatchable graph update %s", self.timetable.dispatchable_graph)
-        self.d_graph_update_received = True
+        robot_id = payload.get('robotId')
+        if robot_id == self.robot_id:
+            self.logger.debug("Received DGraph update")
+            d_graph_update = DGraphUpdate.from_payload(payload)
+            d_graph_update.update_timetable(self.timetable)
+            self.logger.debug("STN update %s", self.timetable.stn)
+            self.logger.debug("Dispatchable graph update %s", self.timetable.dispatchable_graph)
+            self.d_graph_update_received = True
 
     def process_task_status(self, task_status, timestamp):
         if self.robot_id == task_status.robot_id:
+            self.logger.debug("Processing task status %s for task %s by %s", task_status.task_status,
+                              task_status.task_id,
+                              task_status.robot_id)
             self.send_task_status(task_status, timestamp)
             task = Task.get_task(task_status.task_id)
 

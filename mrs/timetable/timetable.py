@@ -223,10 +223,10 @@ class Timetable(STNInterface):
         constraint = TimepointConstraint(earliest_time, latest_time)
         return constraint
 
-    def get_d_graph_update(self, n_tasks):
+    def get_d_graph_update(self, robot_id, n_tasks):
         sub_stn = self.stn.get_subgraph(n_tasks)
         sub_dispatchable_graph = self.dispatchable_graph.get_subgraph(n_tasks)
-        return DGraphUpdate(self.ztp, sub_stn, sub_dispatchable_graph)
+        return DGraphUpdate(robot_id, self.ztp, sub_stn, sub_dispatchable_graph)
 
     def to_dict(self):
         timetable_dict = dict()
