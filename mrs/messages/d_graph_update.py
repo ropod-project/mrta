@@ -6,7 +6,8 @@ from mrs.utils.as_dict import AsDictMixin
 
 class DGraphUpdate(AsDictMixin):
 
-    def __init__(self, ztp, stn, dispatchable_graph, **kwargs):
+    def __init__(self, robot_id, ztp, stn, dispatchable_graph, **kwargs):
+        self.robot_id = robot_id
         self.ztp = ztp
         self.stn = stn
         self.dispatchable_graph = dispatchable_graph
