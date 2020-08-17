@@ -39,11 +39,11 @@ class TimetableMonitorBase:
         payload = msg['payload']
         timestamp = TimeStamp.from_str(msg["header"]["timestamp"]).to_datetime()
         task_status = TaskStatus.from_payload(payload)
-        self.logger.debug("Received task status %s for task %s by %s", task_status.task_status, task_status.task_id,
-                          task_status.robot_id)
         self.process_task_status(task_status, timestamp)
 
     def process_task_status(self, task_status, timestamp):
+        self.logger.debug("Processing task status %s for task %s by %s", task_status.task_status, task_status.task_id,
+                          task_status.robot_id)
         try:
             task = Task.get_task(task_status.task_id)
             if task_status.task_status == TaskStatusConst.ONGOING:
@@ -250,6 +250,8 @@ class TimetableMonitor(TimetableMonitorBase):
         self.processing_task = False
 
     def process_task_status(self, task_status, timestamp):
+        self.logger.debug("Processing task status %s for task %s by %s", task_status.task_status, task_status.task_id,
+                          task_status.robot_id)
         try:
             task = Task.get_task(task_status.task_id)
             if task_status.task_status == TaskStatusConst.ONGOING:
