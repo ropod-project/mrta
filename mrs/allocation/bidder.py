@@ -152,7 +152,7 @@ class Bidder:
                 next_task = self.timetable.get_task(insertion_point+1)
                 prev_version_next_stn_task = self.timetable.get_stn_task(next_task.task_id)
 
-                prev_location = self.get_task_delivery_location(task)
+                prev_location = self.get_previous_location(insertion_point+1)
                 travel_duration = self.get_travel_duration(next_task, prev_location)
 
                 if travel_duration is None:
@@ -193,9 +193,6 @@ class Bidder:
                 self.timetable.stn.update_task(prev_version_next_stn_task)
 
         return best_bid
-
-    def get_task_delivery_location(self, task):
-        return task.request.delivery_location
 
     def insert_in(self, insertion_point):
         try:

@@ -124,7 +124,7 @@ class Dispatcher(SimulatorInterface):
     def send_d_graph_update(self, robot_id):
         timetable = self.timetable_manager.get_timetable(robot_id)
         prev_d_graph_update = self.d_graph_updates.get(robot_id)
-        d_graph_update = timetable.get_d_graph_update(self.n_queued_tasks)
+        d_graph_update = timetable.get_d_graph_update(robot_id, self.n_queued_tasks)
 
         if prev_d_graph_update != d_graph_update:
             self.logger.debug("Sending DGraphUpdate to %s", robot_id)
